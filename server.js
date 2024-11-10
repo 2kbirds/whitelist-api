@@ -3,24 +3,26 @@ const axios = require('axios');
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Environment variables
 const WHITELIST_API_KEY = process.env.API_KEY || "default-key";
-const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || "";  // Set this in Vercel env variables
-const whitelistCodes = {};  // Store generated codes in-memory
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || "";
+
+// In-memory storage for whitelist codes
+const whitelistCodes = {};
 
 // Middleware to parse JSON bodies
 app.use(express.json());
 
-// Generate a new whitelist code
+// **Generate a new whitelist code** endpoint
 app.post('/generateCode', (req, res) => {
   const apiKey = req.headers['x-roblox-api-key'];
-
   if (apiKey !== WHITELIST_API_KEY) {
     return res.status(403).send('Forbidden: Invalid API key');
   }
 
-  // Generate a unique code (simple implementation)
+  // Generate a unique code
   const code = `CODE-${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
-  whitelistCodes[code] = false;  // Store the code as unused
+  whitelistCodes[code] = false; // Store as unused
 
   // Notify via Discord webhook
   if (DISCORD_WEBHOOK_URL) {
@@ -29,18 +31,18 @@ app.post('/generateCode', (req, res) => {
     }).then(() => {
       console.log(`Discord webhook notification sent for code: ${code}`);
     }).catch((error) => {
-      console.error('Failed to send Discord webhook notification:', error.message);
+      console.error('Failed to send Discord notification:', error.message);
     });
   }
 
   res.json({ success: true, code });
 });
 
-// Validate a whitelist code
+// **Validate a whitelist code** endpoint
 app.post('/validateCode', (req, res) => {
   const { code } = req.body;
 
-  if (whitelistCodes[code] === undefined) {
+  if (!whitelistCodes.hasOwnProperty(code)) {
     return res.status(404).send('Invalid or expired code.');
   }
 
@@ -48,8 +50,7 @@ app.post('/validateCode', (req, res) => {
     return res.status(400).send('Code already used.');
   }
 
-  // Mark the code as used
-  whitelistCodes[code] = true;
+  whitelistCodes[code] = true; // Mark code as used
   res.json({ success: true, message: 'Code validated successfully.' });
 });
 
